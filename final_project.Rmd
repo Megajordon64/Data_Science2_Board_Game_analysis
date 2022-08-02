@@ -1,0 +1,235 @@
+---
+title: 'Final Project: Data Science Culmination Project'
+author: 'Jordon Zeigler'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\noindent Project Proposal: Week of November 15-18th
+
+\noindent Project Due: Our Final Exam Time.
+
+
+## Getting started
+
+Here are the steps for getting started:
+
+- Start with the assignment link that creates a repo on GitHub with starter documents. I have sent this to you through email.
+- Clone this repo in RStudio
+- Make any changes needed as outlined by the tasks you need to complete for the assignment
+- Periodically commit changes (the more often the better, for example, once per each new task)
+    + Remember, git will yell at you when you try to commit before running the following lines in the terminal
+        - `git config --global user.name "Your Name Here"`
+        - `git config --global user.email "Your Email Here"`
+- Push all your changes back to your GitHub repo
+
+and voila, you're done! Once you push your changes back you do not need to do anything else to "submit" your work. And you can of course push multiple times throughout the assignment. At the time of the deadline I will take whatever is in your repo and consider it your final submission, and grade the state of your work at that time (which means even if you made mistakes before then, you wouldn't be penalized for them as long as the final state of your work is correct).
+
+## Assignment Description
+
+This is it! This is the culmination of all your work in both of the data science courses! The parameters of this project are very general because I want to give you the chance to explore your interests and be creative. Generally, your project will go through the entire data science process. The project will involve a formal written document as well as a presentation. The written document will be worth 2/3rd's of the final grade and the presentation will be worth the other 1/3rd. 
+
+
+Here are the sections on how the project will be evaluated (A rubric will be released later with more specific parameters).
+
+* Questions and Goals: The questions you wish to answer and the goals of the project.
+* Data Acquisition: The project describes how the data was obtained. 
+* Data Preprocessing: Throughout the project, the proper preprocessing techniques (variable transformations, reshaping data, etc.) are utilized
+* Exploratory Data Analysis: Proper exploratory plots and summarizes are utilized to describe the data and showcase certain interesting aspects of the data that you will explore later in the project.
+* Modeling and Analysis: This is a large portion of the project! You work toward answer the questions/goals you stated at the beginning. Your project needs to include at least 3 modeling techniques we discussed in class. You will fit, tune, and compare the methods. You will discuss the results and why they make sense in context. This section can include a wide range of modeling techniques. Your proposal should be focused on describing what you want to do in this section.
+* Data Product: You present your data, models, and conclusions in a professional manner. This could include an interactive data product.
+
+
+
+## Place Work Below!!
+
+```{r}
+library("tidyverse");theme_set(theme_bw())
+library("tidymodels")
+library("janitor")
+library("knitr")
+library("caret")
+library("leaps")
+library("olsrr")
+library("glmnet")
+library("Metrics")
+library("tree")
+```
+
+dataset acquired from kaggle and is focused on showcasing all of the board games featured on the board game geeks website
+```{r}
+Board_Games <- read_csv("bgg_dataset_complete.csv") %>% clean_names()
+
+Board_Games$play_time <- as.numeric(Board_Games$play_time)
+
+Board_Games$max_players <- as.numeric(Board_Games$max_players)
+```
+
+the main purpose of this data analysis is to see which variables are the most relevant in determining the popularity of a board game, represented by the BGG rank, which is an overall ranking for each board game featured on the BoardGameGeek website, the main variables that will be looked at are, Min players, Max players, Year Published, Play Time, Min Age, Rating average, Users rated and Complexity Average
+```{r}
+summary(Board_Games)
+
+# produces a histogram indicating how often board games are produced with high numbers of players that may play the game at a time
+Max_Player_plot <- Board_Games %>% group_by(max_players) %>%  summarize(Count = n()) %>% arrange(desc(Count)) %>% head(10)
+
+ggplot(Max_Player_plot, aes(x = max_players, y = Count), ylim = c(0, 2000)) +
+    geom_col()  
+
+# will produce a histogram involving the minimum number of players that a board game can support
+Min_Player_plot <- Board_Games %>% group_by(min_players) %>% summarize(Count = n()) %>% arrange(desc(Count)) %>% head(4)
+
+ggplot(Min_Player_plot, aes(x = min_players, y = Count), ylim = c(0, 2000)) + geom_col()
+
+
+# will produce a point graph involving the correlation between the rating average and the BGG rank, which indicates popularity
+ggplot(Board_Games, aes(x = rating_average, y = bgg_rank)) +
+    geom_point() + xlim(0,10) + scale_y_reverse()
+
+# will produce a point graph involving the correlation between the year a board game is published and the BGG rank of a board game
+Year_var_graph <- Board_Games %>% filter(year_published > 1950) %>% head(500)
+
+ggplot(Year_var_graph, aes(x = year_published, y = bgg_rank)) +
+    geom_point(size = 0.2) + scale_y_reverse()
+
+# will produce a point plot involving the correlation between Min age and BGG Rank
+Min_Age_var_graph <- Board_Games %>% head(500)
+
+ggplot(Min_Age_var_graph, aes(x = min_age, y = bgg_rank)) +
+    geom_point(size = 0.2) + scale_y_reverse()
+
+# will produce a point plot involving the correlation between the complexity average and the BGG Rank
+Complexity_var_graph <- Board_Games %>% head(500)
+
+ggplot(Complexity_var_graph, aes(x = complexity_average, y = bgg_rank)) +geom_point(size = 0.2) + scale_y_reverse() 
+
+# point plot involving the correlation between the users rated variable and BGG rank variable 
+Users_Rated_var_graph <- Board_Games %>% head(500)
+
+ggplot(Users_Rated_var_graph, aes(x = users_rated, y = bgg_rank)) +
+    geom_point(size = 0.2) + scale_y_reverse()
+
+# point plot involving the correlation between the play time variable and BGG rank variable 
+play_time_var_graph <- Board_Games %>% head(500)
+
+ggplot(play_time_var_graph, aes(x = play_time, y = bgg_rank)) +
+    geom_point(size = 0.2) + scale_y_reverse()
+```
+The EDA has shown that most board games featured on board game geeks tend to have a max player count of about 4 or so and very large amount of them have a minimum player count of 2. The EDA shows that a majority of board games that have a high bgg rank tend to have a rating greater than 6.0. The analysis has shown that a majority of high ranking board games tend to appear after 2000. The EDA has shown that a majority of high ranking board games tend to have a minimum age rating between 8 and 15. The EDA didn't seem to indicate any obvious trends for the complexity average or users rated variable in relation to the bgg rank variable. Finally the EDA has shown that the majority of high ranking board games tend to have an average play time lower or equal to 120 minutes or two hours.
+
+predictor variables: Year Published, Min Players, Max Players, Min Players, Play time, min age, users rated, rating average, Complexity average,
+response variable: BGG rank
+Linear Regression Model
+
+```{r}
+split_data <- split(Board_Games, sample(1:nrow(Board_Games) > round(nrow(Board_Games) * .1)))
+Training_Board_Games <- split_data$`TRUE`
+Test_Board_Games <- split_data$`FALSE`
+```
+
+```{r}
+BGG_predictor_model = lm(bgg_rank~year_published + min_players + max_players + play_time + min_age + users_rated + rating_average + complexity_average, data = Training_Board_Games)
+
+summary(BGG_predictor_model)
+par(mfrow =c(2,2))
+plot(BGG_predictor_model)
+
+best_predictor_linear <- ols_step_best_subset(BGG_predictor_model)
+best_predictor_linear
+```
+#based on the results of the ols subset the most prominent predictor variable for BGG Rank is rating average, the following models will be set up either using all predictor variables or just the rating average as the predictor
+```{r}
+final_BGG_predictor_model_lin <- lm(bgg_rank ~ rating_average, data = na.omit(Training_Board_Games))
+par(mfrow =c(2,2))
+plot(final_BGG_predictor_model_lin)
+Test_Board_Games <- na.omit(Test_Board_Games)
+
+Metrics::rmse(predict(BGG_predictor_model, Test_Board_Games), Test_Board_Games$bgg_rank)
+
+Metrics::rmse(predict(final_BGG_predictor_model_lin, Test_Board_Games), Test_Board_Games$bgg_rank)
+
+```
+based on the results the ols indicates that the most important variable for estimating ranking is the rating average and while the rmse score for the linear model that uses all of the predictor variables versus just the rating average is slightly lower, indicating that it is more accurate, it is not a significant difference between the two indicating that the rating average variable is very substantial in estimating the ranking
+ 
+
+Penalized Regression Model
+
+```{r}
+
+Training_Board_Games <- na.omit(Training_Board_Games)
+Board_Game_recipe <- recipe(bgg_rank ~ year_published + min_players + max_players + play_time + min_age + users_rated + rating_average + complexity_average, data = Training_Board_Games)
+Board_Game_recipe <- Board_Game_recipe %>% step_center(all_numeric_predictors()) %>% step_scale(all_numeric_predictors())
+
+folds <- vfold_cv(Training_Board_Games, v = 10)
+
+Board_Game_regression_model <- linear_reg(penalty = tune(), mixture = 1) %>% set_engine("glmnet")
+
+Board_Game_workflow <- workflow() %>% add_recipe(Board_Game_recipe) %>% add_model(Board_Game_regression_model)
+
+
+tuning_grid <- grid_regular(penalty(), levels = 50)
+
+
+tuning_grid <- tune_grid(Board_Game_workflow, resamples = folds, grid = tuning_grid)
+
+
+tuning_grid %>% collect_metrics() %>% filter(.metric == "rmse") %>% arrange(mean)
+
+```
+```{r}
+Board_Game_regression_model2 <- linear_reg(penalty = 0.0000000001, mixture = 1) %>% set_engine("glmnet")
+
+Board_Game_workflow2 <- workflow() %>% add_recipe(Board_Game_recipe) %>% add_model(Board_Game_regression_model2)
+
+fit_Board_Game_workflow <- fit(Board_Game_workflow2, Training_Board_Games)
+
+tuning_grid %>%
+    collect_metrics() %>%
+    ggplot(aes(penalty, mean, color = .metric)) +
+    geom_errorbar(aes(
+        ymin = mean - std_err,
+        ymax = mean + std_err
+    ),
+    alpha = 0.5
+    ) +
+    geom_line(size = 1.5) +
+    facet_wrap(~.metric, scales = "free", nrow = 2) +
+    scale_x_log10() +
+    theme(legend.position = "none")
+
+
+penalized_predictions <- predict(fit_Board_Game_workflow, Test_Board_Games)
+penalized_predictions <- na.omit(penalized_predictions)
+
+Metrics::rmse(Test_Board_Games$bgg_rank, penalized_predictions$.pred)
+
+```
+due to errors with trying to tune the alternate penalized model that only used the rating average as the predictor variable, however the penalized regression model that uses all of the predictor variables is shown to be more accurate than the linear model based on the rmse score
+
+decision_tree_model
+```{r}
+Board_Games_refined <- na.omit(Training_Board_Games)
+
+bgg_rank_tree <- tree(bgg_rank ~ year_published + min_players + max_players + play_time + min_age + users_rated + rating_average + complexity_average, data = Board_Games_refined)
+
+bgg_rank_tree_rating <- tree(bgg_rank ~ rating_average, data = Board_Games_refined)
+
+Metrics::rmse(predict(bgg_rank_tree, Test_Board_Games), Test_Board_Games$bgg_rank)
+
+Metrics::rmse(predict(bgg_rank_tree_rating, Test_Board_Games), Test_Board_Games$bgg_rank)
+```
+the results from the decision tree show that the accuracy of the decision tree that uses only the rating average as a predictor variable is much less accurate then the decision tree that uses all of the predictor variables, however it is close in accuracy to the penalized regression model that uses all of the predictor variables
+
+Conclusion:
+Among the three different models built during this project the decision tree would be considered the most accurate as it's rmse score was shown to be much lower than the standard linear and penalized regression models although it does come with the caveat that the decision tree model is noted as having less predictive power than other models and is very susceptible to outliers. The penalized model would be considered the second most accurate model among the three shown here.
+
+in terms of which variable has the most influence, the rating average variable has been shown to be the most influential based on the ols best subset result and the various models formed using only rating average having comparable accuracy to the other models formed using all of the predictor variables.
+ 
+
+
+
+
+
+
